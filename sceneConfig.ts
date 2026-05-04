@@ -173,7 +173,7 @@ export const sceneConfig = {
 
   // ==================== PROJECT INFORMATION ====================
   projectInfo: {
-    title: "DreamSupermarket",    // Main project title - edit this
+    title: "Consumables",    // Main project title - edit this
     concept: "Have you ever dreamed of an endless supermarket?",  // Motivation/concept description
     instructions: [
       "Drag / swipe to rotate the camera.",

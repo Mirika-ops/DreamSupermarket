@@ -1,5 +1,5 @@
 {
-  "name": "particlefield-exhibition",
+  "name": "consumables-exhibition",
   "version": "1.0.0",
   "description": "3D exhibition scene with dust particles, time-based model transformation, and digital clock",
   "private": true,
