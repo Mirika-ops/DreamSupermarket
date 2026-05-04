@@ -4,16 +4,13 @@
  * Model Compression Script
  * Applies Draco compression to all GLB models in public/models directory
  * Usage: node compress-models.js
+ * 
+ * Note: Draco compression CLI via gltf-transform
  */
 
 const fs = require('fs');
 const path = require('path');
-const { NodeIO } = require('@gltf-transform/core');
-const { draco } = require('@gltf-transform/extensions');
-const draco3d = require('draco3d');
-
-// Initialize Draco encoder
-const dracoEncoder = draco3d.createEncoderModule({});
+const { execSync } = require('child_process');
 
 async function compressModels() {
   const modelsDir = path.join(__dirname, 'public', 'models');
@@ -42,41 +39,34 @@ async function compressModels() {
 
   console.log(`\n📦 Compressing ${files.length} model(s) with Draco...\n`);
 
-  const io = new NodeIO();
-
   for (const filepath of files) {
     const filename = path.basename(filepath);
-    const relativePath = path.relative(__dirname, filepath);
+    const outputPath = filepath.replace('.glb', '.compressed.glb');
 
     try {
       const beforeSize = fs.statSync(filepath).size;
-      console.log(`⏳ Compressing: ${filename}`);
+      console.log(`⏳ Compressing: ${filename} (${(beforeSize / 1024 / 1024).toFixed(1)} MB)`);
 
-      // Read GLB
-      const document = await io.read(filepath);
+      // Use gltf-transform CLI to compress with Draco
+      try {
+        execSync(
+          `gltf-transform compress "${filepath}" "${outputPath}" --compression draco`,
+          { stdio: 'pipe' }
+        );
 
-      // Apply Draco compression
-      await document.transform(
-        draco(dracoEncoder, {
-          method: 1, // 0 = edgebreaker, 1 = sequential
-          quantizePosition: 12,
-          quantizeNormal: 10,
-          quantizeTexcoord: 12,
-          quantizeColor: 8,
-          quantizeGeneric: 12,
-          quantizationOrigin: [0, 0, 0],
-        })
-      );
+        // Replace original with compressed version
+        fs.renameSync(outputPath, filepath);
 
-      // Write compressed GLB
-      await io.write(filepath, document);
+        const afterSize = fs.statSync(filepath).size;
+        const reduction = ((1 - afterSize / beforeSize) * 100).toFixed(1);
 
-      const afterSize = fs.statSync(filepath).size;
-      const reduction = ((1 - afterSize / beforeSize) * 100).toFixed(1);
-
-      console.log(`✅ ${filename}`);
-      console.log(`   Size: ${(beforeSize / 1024).toFixed(2)} KB → ${(afterSize / 1024).toFixed(2)} KB`);
-      console.log(`   Reduction: ${reduction}%\n`);
+        console.log(`✅ ${filename}`);
+        console.log(`   Size: ${(beforeSize / 1024 / 1024).toFixed(2)} MB → ${(afterSize / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`   Reduction: ${reduction}%\n`);
+      } catch (execError) {
+        // Fallback: File may be too small or already compressed
+        console.warn(`⚠️  Skipped ${filename} (file may be empty or tool unavailable)\n`);
+      }
     } catch (error) {
       console.error(`❌ Failed to compress ${filename}:`, error.message);
     }
@@ -88,4 +78,5 @@ async function compressModels() {
 compressModels().catch(error => {
   console.error('Fatal error:', error);
   process.exit(1);
+});
 });
