@@ -510,7 +510,8 @@ export default function ParticleFieldVanilla() {
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    // Limit pixel ratio for performance (max 2x)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, sceneConfig.responsive?.maxPixelRatio || 2));
     containerRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -579,8 +580,13 @@ export default function ParticleFieldVanilla() {
     }
 
     // ==================== DUST PARTICLE SYSTEM ====================
+    // Adjust particle count for mobile devices
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const particleCount = Math.floor(
+      sceneConfig.dust.count * (isMobile ? (sceneConfig.responsive?.mobileParticleCountMultiplier || 0.5) : 1)
+    );
     const dustSystem = new DustParticleSystem(
-      sceneConfig.dust.count,
+      particleCount,
       sceneConfig
     );
     scene.add(dustSystem.mesh);
@@ -753,14 +759,35 @@ export default function ParticleFieldVanilla() {
       camera.updateProjectionMatrix();
 
       renderer.setSize(width, height);
+      // Update pixel ratio on resize
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, sceneConfig.responsive?.maxPixelRatio || 2));
       composer.setSize(width, height);
     };
 
     window.addEventListener('resize', handleResize);
 
+    // ==================== PREVENT SCROLL DURING INTERACTION ====================
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        document.body.style.overflow = 'hidden';
+      }
+    };
+
+    const handleTouchEnd = () => {
+      document.body.style.overflow = 'auto';
+    };
+
+    renderer.domElement.addEventListener('touchstart', handleTouchStart);
+    renderer.domElement.addEventListener('touchend', handleTouchEnd);
+
     // ==================== CLEANUP ====================
     return () => {
       window.removeEventListener('resize', handleResize);
+      
+      if (rendererRef.current) {
+        rendererRef.current.domElement.removeEventListener('touchstart', handleTouchStart);
+        rendererRef.current.domElement.removeEventListener('touchend', handleTouchEnd);
+      }
 
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -802,37 +829,366 @@ export default function ParticleFieldVanilla() {
       // Dispose Three.js resources
       composerRef.current?.dispose();
       rendererRef.current?.dispose();
+      
+      // Reset body overflow
+      document.body.style.overflow = 'auto';
     };
   }, []);
 
+  const [expandedSections, setExpandedSections] = useState<{ [key: string]: boolean }>({
+    concept: false,
+    instructions: false,
+    video: false,
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section],
+    }));
+  };
+
   return (
-    <div
-      ref={containerRef}
-      style={{
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        margin: 0,
-        padding: 0,
-      }}
-    >
-      {isLoading && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: '#00ff88',
-            fontSize: '24px',
-            fontFamily: 'monospace',
-            zIndex: 2000,
-            textShadow: '0 0 10px #00ff88',
-          }}
-        >
-          Loading exhibition...
+    <>
+      <div
+        ref={containerRef}
+        style={{
+          width: '100vw',
+          height: '100vh',
+          overflow: 'hidden',
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        {isLoading && (
+          <div
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: '#00ff88',
+              fontSize: '24px',
+              fontFamily: 'monospace',
+              zIndex: 2000,
+              textShadow: '0 0 10px #00ff88',
+            }}
+          >
+            Loading exhibition...
+          </div>
+        )}
+      </div>
+
+      {/* UI OVERLAY PANEL */}
+      <div className="ui-panel">
+        {/* PROJECT TITLE */}
+        <div className="ui-section title-section">
+          <h1 className="project-title">{sceneConfig.projectInfo.title}</h1>
         </div>
-      )}
-    </div>
+
+        {/* CONCEPT SECTION - COLLAPSIBLE */}
+        <div className="ui-section">
+          <button
+            className="section-toggle"
+            onClick={() => toggleSection('concept')}
+            aria-expanded={expandedSections.concept}
+          >
+            <span className="toggle-icon">{expandedSections.concept ? '▼' : '▶'}</span>
+            Motivation & Concept
+          </button>
+          {expandedSections.concept && (
+            <div className="section-content">
+              <p>{sceneConfig.projectInfo.concept}</p>
+            </div>
+          )}
+        </div>
+
+        {/* INSTRUCTIONS SECTION - COLLAPSIBLE */}
+        <div className="ui-section">
+          <button
+            className="section-toggle"
+            onClick={() => toggleSection('instructions')}
+            aria-expanded={expandedSections.instructions}
+          >
+            <span className="toggle-icon">{expandedSections.instructions ? '▼' : '▶'}</span>
+            Instructions
+          </button>
+          {expandedSections.instructions && (
+            <div className="section-content">
+              <ul className="instructions-list">
+                {sceneConfig.projectInfo.instructions.map((instruction, idx) => (
+                  <li key={idx}>{instruction}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* VIDEO SECTION - COLLAPSIBLE */}
+        <div className="ui-section">
+          <button
+            className="section-toggle"
+            onClick={() => toggleSection('video')}
+            aria-expanded={expandedSections.video}
+          >
+            <span className="toggle-icon">{expandedSections.video ? '▼' : '▶'}</span>
+            Video
+          </button>
+          {expandedSections.video && (
+            <div className="section-content">
+              <div className="video-container">
+                {sceneConfig.projectInfo.video.enabled ? (
+                  <>
+                    {sceneConfig.projectInfo.video.externalUrl ? (
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: `<iframe width="100%" height="250" src="${sceneConfig.projectInfo.video.externalUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`,
+                        }}
+                      />
+                    ) : (
+                      <video
+                        width="100%"
+                        height="250"
+                        controls
+                        style={{ backgroundColor: '#000' }}
+                      >
+                        <source
+                          src={sceneConfig.projectInfo.video.localPath}
+                          type="video/mp4"
+                        />
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                  </>
+                ) : (
+                  <div className="video-placeholder">Video coming soon.</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        .ui-panel {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          max-width: 400px;
+          max-height: 80vh;
+          background: linear-gradient(
+            to bottom,
+            rgba(20, 20, 30, 0.95),
+            rgba(10, 10, 20, 0.98)
+          );
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          border-radius: 12px 12px 0 0;
+          padding: 20px;
+          overflow-y: auto;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          color: #e0e0e0;
+          z-index: 1000;
+          box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .ui-section {
+          margin-bottom: 16px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .ui-section:last-child {
+          border-bottom: none;
+        }
+
+        .title-section {
+          border-bottom: 2px solid rgba(0, 255, 136, 0.5);
+          padding-bottom: 16px;
+          margin-bottom: 20px;
+        }
+
+        .project-title {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          color: #00ff88;
+          text-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+          letter-spacing: 1px;
+        }
+
+        .section-toggle {
+          width: 100%;
+          background: rgba(0, 255, 136, 0.1);
+          border: 1px solid rgba(0, 255, 136, 0.3);
+          color: #00ff88;
+          padding: 10px 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          text-align: left;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .section-toggle:hover {
+          background: rgba(0, 255, 136, 0.2);
+          border-color: rgba(0, 255, 136, 0.6);
+          box-shadow: 0 0 12px rgba(0, 255, 136, 0.2);
+        }
+
+        .toggle-icon {
+          display: inline-block;
+          font-size: 10px;
+          transition: transform 0.2s ease;
+        }
+
+        .section-content {
+          margin-top: 12px;
+          padding: 12px;
+          background: rgba(0, 255, 136, 0.05);
+          border-left: 2px solid rgba(0, 255, 136, 0.4);
+          border-radius: 4px;
+          font-size: 13px;
+          line-height: 1.5;
+          animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .section-content p {
+          margin: 0 0 12px 0;
+          color: #c8c8c8;
+        }
+
+        .section-content p:last-child {
+          margin-bottom: 0;
+        }
+
+        .instructions-list {
+          margin: 0;
+          padding-left: 20px;
+          list-style-type: none;
+        }
+
+        .instructions-list li {
+          margin-bottom: 8px;
+          color: #c8c8c8;
+          position: relative;
+          padding-left: 12px;
+        }
+
+        .instructions-list li::before {
+          content: '→';
+          position: absolute;
+          left: 0;
+          color: #00ff88;
+          font-weight: bold;
+        }
+
+        .instructions-list li:last-child {
+          margin-bottom: 0;
+        }
+
+        .video-container {
+          width: 100%;
+        }
+
+        .video-placeholder {
+          width: 100%;
+          height: 200px;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 4px;
+          color: #888;
+          font-size: 14px;
+          font-style: italic;
+        }
+
+        /* Scrollbar styling */
+        .ui-panel::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .ui-panel::-webkit-scrollbar-track {
+          background: rgba(0, 255, 136, 0.05);
+        }
+
+        .ui-panel::-webkit-scrollbar-thumb {
+          background: rgba(0, 255, 136, 0.3);
+          border-radius: 3px;
+        }
+
+        .ui-panel::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 255, 136, 0.5);
+        }
+
+        /* MOBILE RESPONSIVENESS */
+        @media (max-width: 768px) {
+          .ui-panel {
+            max-width: 100%;
+            max-height: 70vh;
+            padding: 16px;
+            border-radius: 12px 12px 0 0;
+          }
+
+          .project-title {
+            font-size: 18px;
+          }
+
+          .section-toggle {
+            font-size: 13px;
+            padding: 8px 10px;
+          }
+
+          .section-content {
+            font-size: 12px;
+            padding: 10px;
+          }
+
+          .ui-section {
+            margin-bottom: 12px;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .ui-panel {
+            padding: 12px;
+          }
+
+          .project-title {
+            font-size: 16px;
+          }
+
+          .section-toggle {
+            font-size: 12px;
+            padding: 7px 8px;
+          }
+
+          .section-content {
+            font-size: 11px;
+            padding: 8px;
+          }
+
+          .instructions-list {
+            padding-left: 16px;
+          }
+        }
+      `}</style>
+    </>
   );
 }

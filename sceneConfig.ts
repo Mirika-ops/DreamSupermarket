@@ -170,6 +170,32 @@ export const sceneConfig = {
     enableAutoRotation: false,        // Rotate the model continuously
     rotationSpeed: 0.005,             // Model rotation speed (radians per frame)
   },
+
+  // ==================== PROJECT INFORMATION ====================
+  projectInfo: {
+    title: "DreamSupermarket",    // Main project title - edit this
+    concept: "Have you ever dreamed of an endless supermarket?",  // Motivation/concept description
+    instructions: [
+      "Drag / swipe to rotate the camera.",
+      "Scroll / pinch to zoom.",
+      "Observe the teddy bear in the dust-filled space.",
+      "A random monster appears every 44 seconds.",
+      "Refreshing the page resets the spawned monsters.",
+    ],
+    video: {
+      enabled: true,
+      localPath: "",  // Local video file (disabled)
+      externalUrl: "https://www.youtube.com/embed/tGy3GEHmhvM",  // YouTube embed URL
+    },
+  },
+
+  // ==================== RESPONSIVE SETTINGS ====================
+  responsive: {
+    // Reduce particles on mobile for better performance
+    mobileParticleCountMultiplier: 0.5,  // Use 50% particles on mobile
+    maxPixelRatio: 2,                     // Limit pixel ratio for performance
+    touchControlsEnabled: true,           // Enable touch/two-finger zoom on mobile
+  },
 };
 
 export default sceneConfig;
