@@ -18,9 +18,9 @@ RADIANCEFIELD_BLEND = Path(r"f:\研一\Tech Direction\tdspring26\tdspring26\exer
 OUTPUT_PATH = Path(r"f:\研一\Tech Direction\tdspring26\tdspring26\exercises\project2\videos")
 
 FRAME_STEP = 5
-CAMERA_DISTANCE = 5.5      # 相机与人物的距离（增大以显示Pointcloud）
-CAMERA_HEIGHT_OFFSET = 1.2  # 相机高度偏移
-CAMERA_FOV = 45              # 视场角（degrees）
+CAMERA_DISTANCE = 5.5      # Camera distance from character (increase to show entire Pointcloud)
+CAMERA_HEIGHT_OFFSET = 1.2  # Camera height offset
+CAMERA_FOV = 45              # Field of view (degrees)
 TARGET_BONE_NAME = "mixamorig:Hips"
 FPS = 24
 
