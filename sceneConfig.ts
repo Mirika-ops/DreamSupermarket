@@ -83,8 +83,8 @@ export const sceneConfig = {
   models: {
     // Default teddy bear model (displayed when not in "13" trigger state)
     default: {
-      path: "/models/teddy/Bear O.fbx",        // Path to teddy bear model
-      scale: 0.01,                             // Scale multiplier (FBX files often need smaller scale)
+      path: "/models/teddy/Bear O.glb",        // Path to teddy bear model (GLB format for web)
+      scale: 0.01,                             // Scale multiplier
       position: { x: 0, y: 0, z: 0 },         // Position in scene
       rotation: { x: 0, y: 0, z: 0 },         // Initial rotation (in radians)
     },
@@ -93,19 +93,19 @@ export const sceneConfig = {
     // Examples that trigger: 13:XX:XX, XX:13:XX, XX:XX:13
     monsters: [
       { 
-        path: "/models/monsters/Bear S.fbx", 
+        path: "/models/monsters/Bear S.glb", 
         scale: 0.01,
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
       },
       { 
-        path: "/models/monsters/mannequin.fbx", 
+        path: "/models/monsters/mannequin.glb", 
         scale: 0.01,
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },
       },
       { 
-        path: "/models/monsters/mayfly.fbx", 
+        path: "/models/monsters/mayfly.glb", 
         scale: 0.01,
         position: { x: 0, y: 0, z: 0 },
         rotation: { x: 0, y: 0, z: 0 },

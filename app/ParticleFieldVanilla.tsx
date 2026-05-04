@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 // @ts-ignore
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 // @ts-ignore
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { EffectComposer, RenderPass, EffectPass, BloomEffect } from 'postprocessing';
@@ -148,13 +148,14 @@ function createExtraMonster(
   modelPath: string,
   position: THREE.Vector3,
   scale: number,
-  fbxLoader: FBXLoader,
+  gltfLoader: GLTFLoader,
   config: any
 ): Promise<THREE.Group | null> {
   return new Promise((resolve) => {
-    fbxLoader.load(
+    gltfLoader.load(
       modelPath,
-      (model: THREE.Group) => {
+      (gltf: any) => {
+        const model = gltf.scene;
         // Apply scale
         model.scale.multiplyScalar(scale * config.extraMonsterSpawn.scaleMultiplier);
 
@@ -302,16 +303,16 @@ class DustParticleSystem {
 /**
  * Model Manager
  * 
- * Handles loading, caching, and disposal of FBX models.
+ * Handles loading, caching, and disposal of GLB/GLTF models.
  * Automatically disposes old models when switching.
  */
 class ModelManager {
-  fbxLoader: FBXLoader;
+  gltfLoader: GLTFLoader;
   currentModel: THREE.Group | null = null;
   modelCache: Map<string, THREE.Group> = new Map();
 
   constructor() {
-    this.fbxLoader = new FBXLoader();
+    this.gltfLoader = new GLTFLoader();
   }
 
   async loadModel(modelPath: string): Promise<THREE.Group> {
@@ -323,9 +324,10 @@ class ModelManager {
 
     console.log(`Loading model: ${modelPath}`);
     return new Promise((resolve, reject) => {
-      this.fbxLoader.load(
+      this.gltfLoader.load(
         modelPath,
-        (scene: THREE.Group) => {
+        (gltf: any) => {
+          const scene = gltf.scene;
           this.modelCache.set(modelPath, scene);
           resolve(scene);
         },
@@ -741,9 +743,10 @@ export default function ParticleFieldVanilla() {
           const randomMonster = monsters[Math.floor(Math.random() * monsters.length)];
 
           // Create and add extra monster to scene (non-async version)
-          modelManagerRef.current!.fbxLoader.load(
+          modelManagerRef.current!.gltfLoader.load(
             randomMonster.path,
-            (model: THREE.Group) => {
+            (gltf: any) => {
+              const model = gltf.scene;
               // Apply scale
               model.scale.multiplyScalar(randomMonster.scale * sceneConfig.extraMonsterSpawn.scaleMultiplier);
 
