@@ -476,6 +476,42 @@ export default function ParticleFieldVanilla() {
   const animationFrameRef = useRef<number | null>(null);
   const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  /**
+   * Preload all models in parallel with progress tracking
+   * Returns total time taken in milliseconds
+   */
+  const preloadAllModels = async (modelManager: ModelManager): Promise<void> => {
+    const defaultModel = sceneConfig.models.default;
+    const monsterModels = sceneConfig.models.monsters;
+    
+    const allModels = [
+      { path: defaultModel.path, name: 'Main Model' },
+      ...monsterModels.map((m, i) => ({ path: m.path, name: `Monster ${i + 1}` })),
+    ];
+
+    const totalModels = allModels.length;
+    let loadedCount = 0;
+
+    // Load all models in parallel
+    const loadPromises = allModels.map(async (model) => {
+      try {
+        await modelManager.loadModel(model.path);
+        loadedCount++;
+        const progress = Math.round((loadedCount / totalModels) * 100);
+        setLoadingProgress(progress);
+        console.log(`✓ Loaded: ${model.name} (${progress}%)`);
+      } catch (error) {
+        console.error(`✗ Failed to load: ${model.name}`, error);
+        loadedCount++;
+        const progress = Math.round((loadedCount / totalModels) * 100);
+        setLoadingProgress(progress);
+      }
+    });
+
+    await Promise.all(loadPromises);
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -620,28 +656,40 @@ export default function ParticleFieldVanilla() {
     timeManager.createClockElement();
     timeManagerRef.current = timeManager;
 
-    // Load default teddy bear model (central model - does not change)
+    // Preload all models in parallel, then set default model
     (async () => {
-      await modelManager.setModel(
-        scene,
-        sceneConfig.models.default.path,
-        sceneConfig.models.default.scale,
-        new THREE.Vector3(
-          sceneConfig.models.default.position.x,
-          sceneConfig.models.default.position.y,
-          sceneConfig.models.default.position.z
-        ),
-        sceneConfig
-      );
-      
-      // Update camera controls to focus on the model
-      if (controlsRef.current && modelManager.currentModel) {
-        updateControlsTarget(controlsRef.current, modelManager.currentModel);
-        // Update dust floor based on model bounds
-        sceneConfig.dust.floorY = updateDustFloorFromModel(modelManager.currentModel, sceneConfig);
+      try {
+        // Start preloading all models
+        setLoadingProgress(5); // Start at 5%
+        await preloadAllModels(modelManager);
+        
+        // All models are now cached, set the default one with position and scale
+        setLoadingProgress(95);
+        await modelManager.setModel(
+          scene,
+          sceneConfig.models.default.path,
+          sceneConfig.models.default.scale,
+          new THREE.Vector3(
+            sceneConfig.models.default.position.x,
+            sceneConfig.models.default.position.y,
+            sceneConfig.models.default.position.z
+          ),
+          sceneConfig
+        );
+        
+        // Update camera controls to focus on the model
+        if (controlsRef.current && modelManager.currentModel) {
+          updateControlsTarget(controlsRef.current, modelManager.currentModel);
+          // Update dust floor based on model bounds
+          sceneConfig.dust.floorY = updateDustFloorFromModel(modelManager.currentModel, sceneConfig);
+        }
+        
+        setLoadingProgress(100);
+        setTimeout(() => setIsLoading(false), 300); // Brief delay for visual feedback
+      } catch (error) {
+        console.error('Error during model preloading:', error);
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     })();
 
     // Clock display update loop (every 100ms) - visual only, no triggers
@@ -872,9 +920,41 @@ export default function ParticleFieldVanilla() {
               fontFamily: 'monospace',
               zIndex: 2000,
               textShadow: '0 0 10px #00ff88',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '20px',
             }}
           >
-            Loading exhibition...
+            <div>Loading exhibition...</div>
+            
+            {/* PROGRESS BAR */}
+            <div
+              style={{
+                width: '300px',
+                height: '8px',
+                backgroundColor: 'rgba(0, 255, 136, 0.2)',
+                border: '1px solid rgba(0, 255, 136, 0.5)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                boxShadow: '0 0 15px rgba(0, 255, 136, 0.3)',
+              }}
+            >
+              <div
+                style={{
+                  width: `${loadingProgress}%`,
+                  height: '100%',
+                  backgroundColor: '#00ff88',
+                  transition: 'width 0.3s ease-out',
+                  boxShadow: '0 0 10px #00ff88',
+                }}
+              />
+            </div>
+            
+            {/* PROGRESS TEXT */}
+            <div style={{ fontSize: '14px', opacity: 0.8 }}>
+              {loadingProgress}%
+            </div>
           </div>
         )}
       </div>
