@@ -47,6 +47,15 @@ function fitModelToView(model: THREE.Group, config: any): void {
   const center = box.getCenter(new THREE.Vector3());
   const size = box.getSize(new THREE.Vector3());
   
+  console.log(`🎯 Model Bounds:`, { center: [center.x, center.y, center.z], size: [size.x, size.y, size.z] });
+  
+  // Check if model has any geometry
+  let meshCount = 0;
+  model.traverse((child) => {
+    if ((child as THREE.Mesh).isMesh) meshCount++;
+  });
+  console.log(`🎨 Mesh count in model: ${meshCount}`);
+  
   // Move to origin
   model.position.sub(center);
   
@@ -55,11 +64,15 @@ function fitModelToView(model: THREE.Group, config: any): void {
     const scale = config.modelDisplay.targetHeight / size.y;
     model.scale.multiplyScalar(scale);
     model.scale.multiplyScalar(config.modelDisplay.manualScaleMultiplier);
+    console.log(`📏 Applied scale: ${scale.toFixed(3)}`);
+  } else {
+    console.log(`⚠️ Skipped auto-scale: autoScale=${config.modelDisplay.autoScale}, size.y=${size.y}`);
   }
   
   // Apply position offset
   const offset = config.modelDisplay.positionOffset;
   model.position.add(new THREE.Vector3(offset[0], offset[1], offset[2]));
+  console.log(`📍 Final position: [${model.position.x.toFixed(2)}, ${model.position.y.toFixed(2)}, ${model.position.z.toFixed(2)}]`);
   
   // Apply rotation offset
   const rotOffset = config.modelDisplay.rotationOffset;
@@ -544,6 +557,8 @@ export default function ParticleFieldVanilla() {
       sceneConfig.camera.lookAt.y,
       sceneConfig.camera.lookAt.z
     );
+    console.log(`📷 Camera position: [${camera.position.x}, ${camera.position.y}, ${camera.position.z}]`);
+    console.log(`📷 Camera lookAt: [${sceneConfig.camera.lookAt.x}, ${sceneConfig.camera.lookAt.y}, ${sceneConfig.camera.lookAt.z}]`);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -663,7 +678,9 @@ export default function ParticleFieldVanilla() {
       try {
         // Start preloading all models
         setLoadingProgress(5); // Start at 5%
+        console.log(`🚀 Starting model preload...`);
         await preloadAllModels(modelManager);
+        console.log(`✅ Preload complete, setting default model...`);
         
         // All models are now cached, set the default one with position and scale
         setLoadingProgress(95);
@@ -679,6 +696,9 @@ export default function ParticleFieldVanilla() {
           sceneConfig
         );
         
+        console.log(`📦 Model added to scene:`, modelManager.currentModel);
+        console.log(`🔍 Scene object count: ${scene.children.length}`);
+        
         // Update camera controls to focus on the model
         if (controlsRef.current && modelManager.currentModel) {
           updateControlsTarget(controlsRef.current, modelManager.currentModel);
@@ -689,7 +709,7 @@ export default function ParticleFieldVanilla() {
         setLoadingProgress(100);
         setTimeout(() => setIsLoading(false), 300); // Brief delay for visual feedback
       } catch (error) {
-        console.error('Error during model preloading:', error);
+        console.error('❌ Error during model preloading:', error);
         setIsLoading(false);
       }
     })();
